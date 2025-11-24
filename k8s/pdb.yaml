@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: 30tel-pdb
+  namespace: 30tel
+  labels:
+    app: 30tel-nextjs
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: 30tel-nextjs
+

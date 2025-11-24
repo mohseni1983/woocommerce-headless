@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 30tel-nextjs
+  namespace: 30tel
+  labels:
+    app: 30tel-nextjs
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: 30tel-nextjs
+  template:
+    metadata:
+      labels:
+        app: 30tel-nextjs
+        version: v1
+    spec:
+      containers:
+      - name: nextjs
+        image: 30tel-nextjs:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: NODE_ENV
+        - name: NEXT_TELEMETRY_DISABLED
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: NEXT_TELEMETRY_DISABLED
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: PORT
+        - name: HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: HOSTNAME
+        - name: WOOCOMMERCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: WOOCOMMERCE_URL
+        - name: NEXT_PUBLIC_SITE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: NEXT_PUBLIC_SITE_URL
+        - name: NEXT_PUBLIC_APP_URL
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: NEXT_PUBLIC_APP_URL
+        - name: WOOCOMMERCE_CONSUMER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: 30tel-secrets
+              key: WOOCOMMERCE_CONSUMER_KEY
+        - name: WOOCOMMERCE_CONSUMER_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: 30tel-secrets
+              key: WOOCOMMERCE_CONSUMER_SECRET
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1001
+
+---
+# Health check endpoint (optional - you may need to create this)
+# Create a file at src/app/api/health/route.ts with:
+# export async function GET() {
+#   return Response.json({ status: 'ok' });
+# }
+

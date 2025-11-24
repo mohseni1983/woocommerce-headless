@@ -4,14 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:debug": "NODE_OPTIONS='--inspect' next dev",
+    "dev:debug-brk": "NODE_OPTIONS='--inspect-brk' next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.554.0",
     "next": "16.0.3",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "swiper": "^12.0.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
