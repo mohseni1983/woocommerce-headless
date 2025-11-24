@@ -10,8 +10,11 @@ data:
   NEXT_TELEMETRY_DISABLED: "1"
   PORT: "3000"
   HOSTNAME: "0.0.0.0"
-  # Update these with your actual values or use environment variables
-  WOOCOMMERCE_URL: "http://wordpress-service:8000"
+  # WordPress/WooCommerce backend API URL
+  WOOCOMMERCE_URL: "https://app.30tel.com"
   NEXT_PUBLIC_SITE_URL: "https://30tel.com"
   NEXT_PUBLIC_APP_URL: "https://30tel.com"
+  # WordPress REST API endpoint
+  WORDPRESS_API_URL: "https://app.30tel.com/wp-json"
+  NEXT_PUBLIC_WORDPRESS_URL: "https://app.30tel.com"
 

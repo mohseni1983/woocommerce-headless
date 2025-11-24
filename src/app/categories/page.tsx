@@ -25,7 +25,8 @@ export default async function CategoriesPage() {
             (meta.value.includes("fa-") || meta.value.includes("icon-")))
       );
       if (iconMeta) {
-        icon = typeof iconMeta.value === "string" ? iconMeta.value : iconMeta.value?.toString();
+        const iconValue = iconMeta.value;
+        icon = typeof iconValue === "string" ? iconValue : String(iconValue || "");
       }
     }
     

@@ -5,7 +5,7 @@ metadata:
   namespace: 30tel
   annotations:
     kubernetes.io/ingress.class: nginx
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/cluster-issuer: letsencrypt-production
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
@@ -31,7 +31,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: 30tel-nextjs-service
+            name: nextjs-service
             port:
               number: 80
   - host: www.30tel.com
@@ -41,7 +41,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: 30tel-nextjs-service
+            name: nextjs-service
             port:
               number: 80
 

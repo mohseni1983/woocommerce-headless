@@ -28,10 +28,6 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false, // Only in dev, not production
   // Power by header removal for security
   poweredByHeader: false,
-  // Experimental: Better source maps for debugging
-  experimental: {
-    instrumentationHook: true,
-  },
   // Enable standalone output for Docker
   output: "standalone",
   // Headers for SEO and security

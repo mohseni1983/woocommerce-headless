@@ -224,6 +224,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Add new meta_data item (id will be assigned by WooCommerce)
       updatedMetaData.push({
+        id: 0,
         key: WISHLIST_META_KEY,
         value: JSON.stringify(wishlistProductIds),
       });

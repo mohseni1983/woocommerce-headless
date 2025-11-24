@@ -32,7 +32,7 @@ export default function ProfilePage() {
         lastName: user.last_name || customer?.last_name || "",
         email: user.email || customer?.email || "",
         phone: customer?.billing?.phone || "",
-        bio: user.description || "",
+        bio: (user as any).description || "",
       });
     }
   }, [user, customer, authLoading, router]);
@@ -80,7 +80,7 @@ export default function ProfilePage() {
         lastName: user.last_name || customer?.last_name || "",
         email: user.email || customer?.email || "",
         phone: customer?.billing?.phone || "",
-        bio: user.description || "",
+        bio: (user as any).description || "",
       });
     }
   };

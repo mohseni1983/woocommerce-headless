@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: nextjs
-        image: 30tel-nextjs:latest
+        image: 192.168.160.60:30500/30tel-nextjs:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
