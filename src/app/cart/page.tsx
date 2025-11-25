@@ -236,7 +236,7 @@ export default function CartPage() {
                 </div>
                 <Link
                   href="/checkout"
-                  className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-4 rounded-xl font-semibold transition-colors"
+                  className="block w-full bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-center py-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   ادامه خرید
                 </Link>

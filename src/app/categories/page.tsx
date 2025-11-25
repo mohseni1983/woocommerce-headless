@@ -26,10 +26,11 @@ export default async function CategoriesPage() {
       );
       if (iconMeta) {
         const iconValue = iconMeta.value;
-        icon = typeof iconValue === "string" ? iconValue : String(iconValue || "");
+        icon =
+          typeof iconValue === "string" ? iconValue : String(iconValue || "");
       }
     }
-    
+
     return {
       id: cat.id,
       name: cat.name,
@@ -78,5 +79,3 @@ export default async function CategoriesPage() {
     </div>
   );
 }
-
-

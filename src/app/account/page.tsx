@@ -264,7 +264,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:opacity-50"
               >
                 <Save size={18} />
                 <span>{saving ? "در حال ذخیره..." : "ذخیره تغییرات"}</span>
@@ -273,7 +273,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={handleCancel}
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 rounded-xl font-semibold transition-all duration-300 shadow-md hover:shadow-lg disabled:shadow-none transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:opacity-50"
               >
                 <X size={18} />
                 <span>انصراف</span>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Menu,
   X,
@@ -90,11 +91,16 @@ export default function Header() {
             className="flex items-center gap-2 group"
             aria-label="30tel - صفحه اصلی"
           >
-            <div className="relative">
-              <div className="text-2xl md:text-3xl font-heading bg-gradient-to-l from-blue-600 via-blue-700 to-indigo-600 bg-clip-text text-transparent transition-all duration-300 group-hover:scale-105">
-                30tel
-              </div>
-              <div className="absolute -bottom-1 right-0 left-0 h-0.5 bg-gradient-to-l from-blue-600 to-indigo-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+            <div className="relative h-10 md:h-12 w-auto transition-all duration-300 group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="30tel Logo"
+                width={120}
+                height={48}
+                priority
+                className="h-full w-auto object-contain"
+                style={{ maxHeight: "48px" }}
+              />
             </div>
           </Link>
 

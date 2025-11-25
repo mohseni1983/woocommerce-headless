@@ -33,8 +33,8 @@ export default function ContactPage() {
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   تلفن تماس
                 </h3>
-                <p className="text-gray-600">021-12345678</p>
-                <p className="text-gray-600">09123456789</p>
+                <p className="text-gray-600">05155429526</p>
+                <p className="text-gray-600">09355805385</p>
               </div>
 
               <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -52,7 +52,7 @@ export default function ContactPage() {
                   آدرس
                 </h3>
                 <p className="text-gray-600">
-                  تهران، خیابان ولیعصر، پلاک 123
+                خراسان رضوی <br /> شهر بردسکن- خیابان امام خمینی <br /> روبروی امام هشت <br /> موبایل سی تل
                 </p>
               </div>
 
@@ -116,7 +116,7 @@ export default function ContactPage() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-semibold transition-colors"
+                  className="w-full bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   ارسال پیام
                 </button>

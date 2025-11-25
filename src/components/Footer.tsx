@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Instagram, Twitter, Facebook, Mail, Phone, MapPin } from "lucide-react";
 
 export default function Footer() {
@@ -30,12 +31,21 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About Section */}
           <div>
-            <h3 className="text-white text-xl font-bold mb-4">30tel</h3>
+            <Link href="/" className="inline-block mb-4">
+              <Image
+                src="/logo.png"
+                alt="30tel Logo"
+                width={100}
+                height={40}
+                className="h-10 w-auto object-contain brightness-0 invert"
+                style={{ maxHeight: "40px" }}
+              />
+            </Link>
             <p className="text-gray-400 mb-4 leading-relaxed">
               فروشگاه آنلاین موبایل و گجت با بهترین قیمت و کیفیت. ما بهترین
               محصولات را با گارانتی معتبر به شما ارائه می‌دهیم.
             </p>
-            <div className="flex space-x-4 space-x-reverse">
+            <div className="flex space-x-4">
               <a
                 href="#"
                 className="p-2 bg-gray-800 rounded-full hover:bg-blue-600 transition-colors"
@@ -97,7 +107,7 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center space-x-2 space-x-reverse">
                 <Phone size={18} className="text-blue-500" />
-                <span className="text-gray-400">021-12345678</span>
+                <span className="text-gray-400">05155429526</span>
               </li>
               <li className="flex items-center space-x-2 space-x-reverse">
                 <Mail size={18} className="text-blue-500" />
@@ -106,7 +116,7 @@ export default function Footer() {
               <li className="flex items-start space-x-2 space-x-reverse">
                 <MapPin size={18} className="text-blue-500 mt-1" />
                 <span className="text-gray-400">
-                  تهران، خیابان ولیعصر، پلاک 123
+                خراسان رضوی <br /> شهر بردسکن- خیابان امام خمینی <br /> روبروی امام هشت <br /> موبایل سی تل
                 </span>
               </li>
             </ul>

@@ -12,10 +12,14 @@ import {
   CreditCard,
   Plus,
   Check,
+  User,
+  Lock,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ShippingMethod {
   id: string;
@@ -43,7 +47,7 @@ interface Country {
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getTotal, loading: cartLoading } = useCart();
-  const { user, customer } = useAuth();
+  const { user, customer, loading: authLoading, login, refreshUser } = useAuth();
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
@@ -51,6 +55,18 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Auth form states
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [authFormData, setAuthFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+  });
 
   // Countries and states
   const [countries, setCountries] = useState<Country[]>([]);
@@ -109,6 +125,114 @@ export default function CheckoutPage() {
       });
     }
   }, [user, customer]);
+
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthSubmitting(true);
+
+    if (!authFormData.username || !authFormData.password) {
+      setAuthError("نام کاربری و رمز عبور الزامی است");
+      setAuthSubmitting(false);
+      return;
+    }
+
+    const success = await login(authFormData.username, authFormData.password);
+    if (success) {
+      await refreshUser();
+      // Wait a bit for user state to update
+      setTimeout(() => {
+        // Clear auth form
+        setAuthFormData({
+          username: "",
+          email: "",
+          password: "",
+          firstName: "",
+          lastName: "",
+        });
+      }, 500);
+    } else {
+      setAuthError("نام کاربری یا رمز عبور اشتباه است");
+    }
+    setAuthSubmitting(false);
+  };
+
+  // Handle register
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthSubmitting(true);
+
+    if (!authFormData.username || !authFormData.email || !authFormData.password) {
+      setAuthError("نام کاربری، ایمیل و رمز عبور الزامی است");
+      setAuthSubmitting(false);
+      return;
+    }
+
+    if (authFormData.password.length < 6) {
+      setAuthError("رمز عبور باید حداقل 6 کاراکتر باشد");
+      setAuthSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          username: authFormData.username,
+          email: authFormData.email,
+          password: authFormData.password,
+          firstName: authFormData.firstName,
+          lastName: authFormData.lastName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update form data with registration info immediately
+        if (data.user) {
+          setFormData((prev) => ({
+            ...prev,
+            first_name: data.user.first_name || authFormData.firstName || prev.first_name,
+            last_name: data.user.last_name || authFormData.lastName || prev.last_name,
+            email: data.user.email || authFormData.email || prev.email,
+          }));
+        }
+        
+        // Auto login after registration
+        const loginSuccess = await login(authFormData.username, authFormData.password);
+        if (loginSuccess) {
+          await refreshUser();
+          // Wait a bit for user state to update
+          setTimeout(() => {
+            // Clear auth form
+            setAuthFormData({
+              username: "",
+              email: "",
+              password: "",
+              firstName: "",
+              lastName: "",
+            });
+          }, 500);
+        } else {
+          setAuthError("ثبت‌نام موفق بود اما ورود خودکار انجام نشد. لطفا وارد شوید.");
+        }
+      } else {
+        setAuthError(data.message || "خطا در ثبت‌نام");
+      }
+    } catch (error) {
+      console.error("Register error:", error);
+      setAuthError("خطا در ثبت‌نام. لطفا دوباره تلاش کنید.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (items.length === 0 && !cartLoading) {
@@ -410,7 +534,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (cartLoading || loading) {
+  if (cartLoading || loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
         <Loader2 className="animate-spin text-blue-600" size={32} />
@@ -420,6 +544,304 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return null; // Will redirect
+  }
+
+  // Show auth form if user is not logged in
+  if (!user && !authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-lg p-8"
+          >
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                تکمیل خرید
+              </h1>
+              <p className="text-gray-600">
+                برای ادامه خرید، لطفا وارد حساب کاربری خود شوید یا ثبت‌نام کنید
+              </p>
+            </div>
+
+            {/* Auth Tabs */}
+            <div className="flex border-b border-gray-200 mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthError("");
+                }}
+                className={`flex-1 py-3 text-center font-semibold transition-all duration-300 relative ${
+                  authMode === "login"
+                    ? "text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                ورود
+                {authMode === "login" && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("register");
+                  setAuthError("");
+                }}
+                className={`flex-1 py-3 text-center font-semibold transition-all duration-300 relative ${
+                  authMode === "register"
+                    ? "text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                ثبت‌نام
+                {authMode === "register" && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </button>
+            </div>
+
+            {/* Auth Error */}
+            {authError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center gap-2"
+              >
+                <AlertCircle size={20} />
+                <span>{authError}</span>
+              </motion.div>
+            )}
+
+            {/* Login Form */}
+            <AnimatePresence mode="wait">
+              {authMode === "login" ? (
+                <motion.form
+                  key="login"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  onSubmit={handleLogin}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      نام کاربری یا ایمیل
+                    </label>
+                    <div className="relative">
+                      <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                      <input
+                        type="text"
+                        required
+                        value={authFormData.username}
+                        onChange={(e) =>
+                          setAuthFormData({
+                            ...authFormData,
+                            username: e.target.value,
+                          })
+                        }
+                        className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="نام کاربری یا ایمیل"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      رمز عبور
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                      <input
+                        type="password"
+                        required
+                        value={authFormData.password}
+                        onChange={(e) =>
+                          setAuthFormData({
+                            ...authFormData,
+                            password: e.target.value,
+                          })
+                        }
+                        className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="رمز عبور"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={authSubmitting}
+                    className="w-full bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none"
+                  >
+                    {authSubmitting ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} />
+                        <span>در حال ورود...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>ورود</span>
+                        <ArrowRight size={20} className="transition-transform group-hover:translate-x-[-2px]" />
+                      </>
+                    )}
+                  </button>
+                </motion.form>
+              ) : (
+                <motion.form
+                  key="register"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  onSubmit={handleRegister}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        نام <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={authFormData.firstName}
+                        onChange={(e) =>
+                          setAuthFormData({
+                            ...authFormData,
+                            firstName: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="نام"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        نام خانوادگی <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={authFormData.lastName}
+                        onChange={(e) =>
+                          setAuthFormData({
+                            ...authFormData,
+                            lastName: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="نام خانوادگی"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      نام کاربری <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                      <input
+                        type="text"
+                        required
+                        value={authFormData.username}
+                        onChange={(e) =>
+                          setAuthFormData({
+                            ...authFormData,
+                            username: e.target.value,
+                          })
+                        }
+                        className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="نام کاربری"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      ایمیل <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                      <input
+                        type="email"
+                        required
+                        value={authFormData.email}
+                        onChange={(e) =>
+                          setAuthFormData({
+                            ...authFormData,
+                            email: e.target.value,
+                          })
+                        }
+                        className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      رمز عبور <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                      <input
+                        type="password"
+                        required
+                        value={authFormData.password}
+                        onChange={(e) =>
+                          setAuthFormData({
+                            ...authFormData,
+                            password: e.target.value,
+                          })
+                        }
+                        className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="حداقل 6 کاراکتر"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={authSubmitting}
+                    className="w-full bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none"
+                  >
+                    {authSubmitting ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} />
+                        <span>در حال ثبت‌نام...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>ثبت‌نام و ادامه خرید</span>
+                        <ArrowRight size={20} className="transition-transform group-hover:translate-x-[-2px]" />
+                      </>
+                    )}
+                  </button>
+                </motion.form>
+              )}
+            </AnimatePresence>
+
+            <div className="mt-6 text-center text-sm text-gray-600">
+              <p>
+                با ادامه، شما{" "}
+                <Link href="/terms" className="text-blue-600 hover:underline">
+                  شرایط استفاده
+                </Link>{" "}
+                و{" "}
+                <Link href="/privacy" className="text-blue-600 hover:underline">
+                  حریم خصوصی
+                </Link>{" "}
+                را می‌پذیرید.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -464,10 +886,10 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => handleSelectAddress("billing")}
-                          className={`w-full text-right p-4 border-2 rounded-xl transition-colors ${
+                          className={`w-full text-center p-4 border-2 rounded-xl transition-all duration-300 ${
                             selectedAddress === "billing"
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-blue-300"
+                              ? "border-blue-500 bg-blue-50 shadow-md transform scale-[1.02]"
+                              : "border-gray-200 hover:border-blue-300 hover:shadow-sm hover:bg-gray-50"
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -511,10 +933,10 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => handleSelectAddress("shipping")}
-                          className={`w-full text-right p-4 border-2 rounded-xl transition-colors ${
+                          className={`w-full text-center p-4 border-2 rounded-xl transition-all duration-300 ${
                             selectedAddress === "shipping"
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-blue-300"
+                              ? "border-blue-500 bg-blue-50 shadow-md transform scale-[1.02]"
+                              : "border-gray-200 hover:border-blue-300 hover:shadow-sm hover:bg-gray-50"
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -552,10 +974,10 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={handleNewAddress}
-                        className={`w-full p-4 border-2 border-dashed rounded-xl transition-colors flex items-center justify-center gap-2 ${
+                        className={`w-full p-4 border-2 border-dashed rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
                           selectedAddress === "new"
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+                            ? "border-blue-500 bg-blue-50 shadow-md transform scale-[1.02]"
+                            : "border-gray-300 hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm"
                         }`}
                       >
                         <Plus size={20} className="text-blue-600" />
@@ -905,7 +1327,7 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2 space-x-reverse"
+                  className="w-full bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-[1.02] active:scale-[0.98] disabled:transform-none"
                 >
                   {submitting ? (
                     <>
@@ -915,7 +1337,7 @@ export default function CheckoutPage() {
                   ) : (
                     <>
                       <span>تایید و پرداخت</span>
-                      <ArrowRight size={20} />
+                      <ArrowRight size={20} className="transition-transform group-hover:translate-x-[-2px]" />
                     </>
                   )}
                 </button>
