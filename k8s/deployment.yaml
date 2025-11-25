@@ -7,7 +7,7 @@ metadata:
     app: 30tel-nextjs
     version: v1
 spec:
-  replicas: 3
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -66,6 +66,21 @@ spec:
             configMapKeyRef:
               name: 30tel-config
               key: NEXT_PUBLIC_APP_URL
+        - name: WORDPRESS_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: WORDPRESS_API_URL
+        - name: NEXT_PUBLIC_WORDPRESS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: NEXT_PUBLIC_WORDPRESS_URL
+        - name: WORDPRESS_INTERNAL_URL
+          valueFrom:
+            configMapKeyRef:
+              name: 30tel-config
+              key: WORDPRESS_INTERNAL_URL
         - name: WOOCOMMERCE_CONSUMER_KEY
           valueFrom:
             secretKeyRef:

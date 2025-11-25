@@ -10,11 +10,15 @@ data:
   NEXT_TELEMETRY_DISABLED: "1"
   PORT: "3000"
   HOSTNAME: "0.0.0.0"
-  # WordPress/WooCommerce backend API URL
+  # WordPress/WooCommerce backend API URL (using external URL that works)
   WOOCOMMERCE_URL: "https://app.30tel.com"
+  # External URL for client-side calls (NEXT_PUBLIC_* are available in browser)
   NEXT_PUBLIC_SITE_URL: "https://30tel.com"
   NEXT_PUBLIC_APP_URL: "https://30tel.com"
-  # WordPress REST API endpoint
-  WORDPRESS_API_URL: "https://app.30tel.com/wp-json"
+  # WordPress REST API endpoint (internal for server-side)
+  WORDPRESS_API_URL: "http://wordpress.wordpress.svc.cluster.local/wp-json"
+  # External URL for client-side WordPress calls
   NEXT_PUBLIC_WORDPRESS_URL: "https://app.30tel.com"
+  # Internal WordPress URL (for server-side only)
+  WORDPRESS_INTERNAL_URL: "http://wordpress.wordpress.svc.cluster.local"
 
