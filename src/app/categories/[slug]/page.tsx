@@ -1,15 +1,26 @@
-import { getCategoryBySlug, getProducts, getCategories } from "@/lib/woocommerce";
-import { generateMetadata as genMeta, generateBreadcrumbStructuredData } from "@/lib/seo";
+import {
+  getCategoryBySlug,
+  getProducts,
+  getCategories,
+} from "@/lib/woocommerce";
+import {
+  generateMetadata as genMeta,
+  generateBreadcrumbStructuredData,
+} from "@/lib/seo";
 import ProductCard from "@/components/ProductCard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
+// Disable static generation - all pages will be generated on-demand
 export async function generateStaticParams() {
-  const categories = await getCategories({ per_page: 100 });
-  return categories.map((category) => ({
-    slug: category.slug,
-  }));
+  return []; // Empty array = no static generation
 }
+
+// Enable dynamic rendering
+export const dynamicParams = true;
+
+// Force dynamic rendering - no SSG
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -27,7 +38,8 @@ export async function generateMetadata({
     }
     return genMeta({
       title: category.name,
-      description: category.description || `خرید ${category.name} با بهترین قیمت`,
+      description:
+        category.description || `خرید ${category.name} با بهترین قیمت`,
     });
   } catch {
     return genMeta({
@@ -46,9 +58,9 @@ export default async function CategoryPage({
 }) {
   const { slug } = await params;
   const paramsResolved = await searchParams;
-  
+
   const category = await getCategoryBySlug(slug);
-  
+
   if (!category) {
     notFound();
   }
@@ -119,9 +131,7 @@ export default async function CategoryPage({
                         ? parseFloat(product.regular_price)
                         : undefined
                     }
-                    image={
-                      product.images[0]?.src || "/placeholder-product.svg"
-                    }
+                    image={product.images[0]?.src || "/placeholder-product.svg"}
                     badge={product.featured ? "ویژه" : undefined}
                     rating={parseFloat(product.average_rating) || 5}
                     stock_status={product.stock_status}
@@ -164,4 +174,3 @@ export default async function CategoryPage({
     </>
   );
 }
-

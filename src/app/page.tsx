@@ -16,11 +16,35 @@ export const metadata = genMeta({
 });
 
 export default async function HomePage() {
-  // Fetch featured products and categories
-  const [featuredProducts, categories] = await Promise.all([
-    getProducts({ featured: true, per_page: 8 }).catch(() => []),
-    getCategories({ per_page: 12, hide_empty: true }).catch(() => []),
-  ]);
+  // Fetch featured products, newest products, and categories
+  let featuredProducts: any[] = [];
+  let newestProducts: any[] = [];
+  let categories: any[] = [];
+
+  try {
+    [featuredProducts, newestProducts, categories] = await Promise.all([
+      getProducts({ featured: true, per_page: 8 }).catch((error) => {
+        console.error("Error fetching featured products:", error);
+        return [];
+      }),
+      getProducts({ orderby: "date", order: "desc", per_page: 4 }).catch(
+        (error) => {
+          console.error("Error fetching newest products:", error);
+          return [];
+        }
+      ),
+      getCategories({ per_page: 12, hide_empty: true }).catch((error) => {
+        console.error("Error fetching categories:", error);
+        return [];
+      }),
+    ]);
+  } catch (error) {
+    console.error("Error in HomePage:", error);
+  }
+
+  // Log for debugging
+  console.log("Featured products count:", featuredProducts.length);
+  console.log("Newest products count:", newestProducts.length);
 
   // Transform categories for CategorySection
   const transformedCategories = Array.isArray(categories)
@@ -28,19 +52,47 @@ export default async function HomePage() {
         // Extract icon from meta_data if exists
         let icon: string | undefined;
         if (cat.meta_data && Array.isArray(cat.meta_data)) {
-          const iconMeta = cat.meta_data.find(
-            (meta: any) =>
-              meta.key === "icon" ||
-              meta.key === "category_icon" ||
-              meta.key === "_icon" ||
-              (typeof meta.value === "string" &&
-                (meta.value.includes("fa-") || meta.value.includes("icon-")))
+          // Log meta_data for debugging
+          console.log(
+            `[DEBUG] Category ${cat.name} meta_data:`,
+            JSON.stringify(cat.meta_data, null, 2)
           );
+
+          // Try multiple possible field names (case-insensitive)
+          const iconMeta = cat.meta_data.find((meta: any) => {
+            const key = meta.key?.toLowerCase() || "";
+            const value = meta.value?.toString() || "";
+
+            // Check for common icon field names
+            return (
+              key === "icon" ||
+              key === "category_icon" ||
+              key === "_icon" ||
+              key === "icon_class" ||
+              key === "fa_icon" ||
+              // Check if value contains Font Awesome classes
+              (typeof value === "string" &&
+                (value.includes("fa-") ||
+                  value.includes("icon-") ||
+                  value.includes("fas ") ||
+                  value.includes("far ") ||
+                  value.includes("fab ") ||
+                  value.includes("fa-solid ") ||
+                  value.includes("fa-regular ") ||
+                  value.includes("fa-brands ")))
+            );
+          });
+
           if (iconMeta) {
+            const iconValue = iconMeta.value;
             icon =
-              typeof iconMeta.value === "string"
-                ? iconMeta.value
-                : iconMeta.value?.toString();
+              typeof iconValue === "string"
+                ? iconValue.trim()
+                : iconValue?.toString().trim();
+
+            console.log(`[DEBUG] Found icon for ${cat.name}:`, icon);
+          } else {
+            console.log(`[DEBUG] No icon found for category: ${cat.name}`);
           }
         }
 
@@ -73,80 +125,87 @@ export default async function HomePage() {
       )}
 
       {/* Featured Products Section */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-              محصولات ویژه
-            </h2>
-            <Link
-              href="/products"
-              className="flex items-center space-x-2 space-x-reverse text-blue-600 hover:text-blue-700 font-semibold"
-            >
-              <span>مشاهده همه</span>
-              <ArrowLeft size={20} />
-            </Link>
-          </div>
+      {featuredProducts.length > 0 && (
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+                محصولات ویژه
+              </h2>
+              <Link
+                href="/products?featured=true"
+                className="flex items-center space-x-2 space-x-reverse text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                <span>مشاهده همه</span>
+                <ArrowLeft size={20} />
+              </Link>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                price={parseFloat(product.price)}
-                originalPrice={
-                  product.regular_price
-                    ? parseFloat(product.regular_price)
-                    : undefined
-                }
-                image={product.images[0]?.src || "/placeholder-product.svg"}
-                badge={product.featured ? "ویژه" : undefined}
-                rating={parseFloat(product.average_rating) || 5}
-                stock_status={product.stock_status}
-                stock_quantity={product.stock_quantity}
-                manage_stock={product.manage_stock}
-              />
-            ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={parseFloat(product.price)}
+                  originalPrice={
+                    product.regular_price
+                      ? parseFloat(product.regular_price)
+                      : undefined
+                  }
+                  image={product.images[0]?.src || "/placeholder-product.svg"}
+                  badge={product.featured ? "ویژه" : undefined}
+                  rating={parseFloat(product.average_rating) || 5}
+                  stock_status={product.stock_status}
+                  stock_quantity={product.stock_quantity}
+                  manage_stock={product.manage_stock}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* New Arrivals Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-              جدیدترین محصولات
-            </h2>
-            <Link
-              href="/products?sort=newest"
-              className="flex items-center space-x-2 space-x-reverse text-blue-600 hover:text-blue-700 font-semibold"
-            >
-              <span>مشاهده همه</span>
-              <ArrowLeft size={20} />
-            </Link>
-          </div>
+      {newestProducts.length > 0 && (
+        <section className="py-16 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+                جدیدترین محصولات
+              </h2>
+              <Link
+                href="/products?sort=newest"
+                className="flex items-center space-x-2 space-x-reverse text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                <span>مشاهده همه</span>
+                <ArrowLeft size={20} />
+              </Link>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.slice(0, 4).map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                price={parseFloat(product.price)}
-                originalPrice={
-                  product.regular_price
-                    ? parseFloat(product.regular_price)
-                    : undefined
-                }
-                image={product.images[0]?.src || "/placeholder-product.svg"}
-                rating={parseFloat(product.average_rating) || 5}
-              />
-            ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {newestProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={parseFloat(product.price)}
+                  originalPrice={
+                    product.regular_price
+                      ? parseFloat(product.regular_price)
+                      : undefined
+                  }
+                  image={product.images[0]?.src || "/placeholder-product.svg"}
+                  rating={parseFloat(product.average_rating) || 5}
+                  stock_status={product.stock_status}
+                  stock_quantity={product.stock_quantity}
+                  manage_stock={product.manage_stock}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="py-16 bg-white">

@@ -3,7 +3,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Smartphone, Headphones, Watch, Tablet, Camera, Laptop } from "lucide-react";
+import {
+  Smartphone,
+  Headphones,
+  Watch,
+  Tablet,
+  Camera,
+  Laptop,
+} from "lucide-react";
 
 interface Category {
   id: number;
@@ -66,7 +73,15 @@ export default function CategorySection({ categories }: CategorySectionProps) {
           {categories.map((category, index) => {
             const Icon = getIcon(category.name);
             const fontAwesomeIcon = getFontAwesomeIcon(category);
-            
+
+            // Debug log
+            if (fontAwesomeIcon) {
+              console.log(
+                `[CategorySection] Category ${category.name} has icon:`,
+                fontAwesomeIcon
+              );
+            }
+
             return (
               <motion.div
                 key={category.id}
@@ -81,18 +96,25 @@ export default function CategorySection({ categories }: CategorySectionProps) {
                 >
                   <div className="mb-4 flex justify-center">
                     <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl group-hover:from-blue-100 group-hover:to-blue-200 transition-all duration-300">
-                      {category.image ? (
+                      {/* Priority: Font Awesome icon > Category image > Default icon */}
+                      {fontAwesomeIcon ? (
+                        <i
+                          className={`${fontAwesomeIcon} text-blue-600 group-hover:scale-110 transition-transform duration-300`}
+                          style={{
+                            fontSize: "32px",
+                            lineHeight: "48px",
+                            width: "48px",
+                            height: "48px",
+                            display: "inline-block",
+                          }}
+                        />
+                      ) : category.image ? (
                         <Image
                           src={category.image}
                           alt={category.name}
                           width={48}
                           height={48}
                           className="object-contain"
-                        />
-                      ) : fontAwesomeIcon ? (
-                        <i
-                          className={`${fontAwesomeIcon} text-blue-600 group-hover:scale-110 transition-transform duration-300`}
-                          style={{ fontSize: "48px" }}
                         />
                       ) : (
                         <Icon
@@ -105,7 +127,9 @@ export default function CategorySection({ categories }: CategorySectionProps) {
                   <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                     {category.name}
                   </h3>
-                  <p className="text-sm text-gray-500">{category.count} محصول</p>
+                  <p className="text-sm text-gray-500">
+                    {category.count} محصول
+                  </p>
                 </Link>
               </motion.div>
             );
@@ -115,4 +139,3 @@ export default function CategorySection({ categories }: CategorySectionProps) {
     </section>
   );
 }
-

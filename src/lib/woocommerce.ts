@@ -107,11 +107,31 @@ export interface WooCommerceCategory {
   _links: any;
 }
 
+// Rate limiting: delay between requests to prevent 508/507 errors
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 300; // 300ms minimum between requests (increased to prevent resource limits)
+
+async function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function rateLimit(): Promise<void> {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+  }
+
+  lastRequestTime = Date.now();
+}
+
 export async function fetchWooCommerce(
   endpoint: string,
   params: Record<string, any> = {},
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
-  body?: any
+  body?: any,
+  retries: number = 2 // Reduced retries to prevent long build times
 ): Promise<any> {
   // Check if WooCommerce URL is configured
   if (!WOOCOMMERCE_URL) {
@@ -120,6 +140,9 @@ export async function fetchWooCommerce(
       ? []
       : null;
   }
+
+  // Rate limiting: wait before making request
+  await rateLimit();
 
   // Clean endpoint - remove leading/trailing slashes and ensure proper format
   const cleanEndpoint = endpoint.replace(/^\/+|\/+$/g, "");
@@ -135,11 +158,14 @@ export async function fetchWooCommerce(
     }
   });
 
-  console.log("[DEBUG] fetchWooCommerce - Endpoint:", cleanEndpoint);
-  console.log(
-    "[DEBUG] fetchWooCommerce - Full URL:",
-    url.toString().replace(/consumer_secret=[^&]+/g, "consumer_secret=***")
-  );
+  // Only log in development or when explicitly debugging
+  if (process.env.NODE_ENV === "development") {
+    console.log("[DEBUG] fetchWooCommerce - Endpoint:", cleanEndpoint);
+    console.log(
+      "[DEBUG] fetchWooCommerce - Full URL:",
+      url.toString().replace(/consumer_secret=[^&]+/g, "consumer_secret=***")
+    );
+  }
 
   // Prepare headers
   const headers: HeadersInit = {
@@ -163,67 +189,111 @@ export async function fetchWooCommerce(
     }
   }
 
-  try {
-    const fetchOptions: RequestInit & { next?: { revalidate: number } } = {
-      method,
-      headers,
-    };
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const fetchOptions: RequestInit & { next?: { revalidate: number } } = {
+        method,
+        headers,
+      };
 
-    if (method !== "GET" && body) {
-      fetchOptions.body = JSON.stringify(body);
-    }
-
-    if (method === "GET") {
-      (fetchOptions as any).next = { revalidate: 60 }; // Revalidate every 60 seconds for SSR
-    }
-
-    const response = await fetch(url.toString(), fetchOptions);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { message: errorText };
+      if (method !== "GET" && body) {
+        fetchOptions.body = JSON.stringify(body);
       }
 
-      console.error(
-        `[ERROR] WooCommerce API error (${response.status}):`,
-        errorText
-      );
-      console.error(
-        `[ERROR] Failed URL: ${url
-          .toString()
-          .replace(/consumer_secret=[^&]+/g, "consumer_secret=***")}`
-      );
-      console.error(`[ERROR] Endpoint: ${cleanEndpoint}`);
-      console.error(`[ERROR] Method: ${method}`);
-      console.error(`[ERROR] Error data:`, errorData);
+      if (method === "GET") {
+        (fetchOptions as any).next = { revalidate: 60 }; // Revalidate every 60 seconds for SSR
+      }
 
-      // If 401, provide helpful error message
-      if (response.status === 401) {
-        const errorCode = errorData?.code || "";
-        const isCannotView = errorCode === "woocommerce_rest_cannot_view";
+      const response = await fetch(url.toString(), fetchOptions);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+
+        // Handle 507/508 Resource Limit errors with retry
+        if (
+          (response.status === 507 || response.status === 508) &&
+          attempt < retries
+        ) {
+          const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000); // Exponential backoff, max 10s
+          console.warn(
+            `[WARN] Resource limit reached (${
+              response.status
+            }). Retrying in ${backoffDelay}ms... (Attempt ${attempt + 1}/${
+              retries + 1
+            })`
+          );
+          await delay(backoffDelay);
+          continue; // Retry the request
+        }
 
         console.error(
-          "\n⚠️  API Authentication Error (401):\n" +
-            (isCannotView
-              ? "   ❌ USER ROLE ISSUE: The user linked to your API key doesn't have Administrator role.\n" +
-                "   🔧 QUICK FIX:\n" +
-                "      1. Go to WordPress Admin → Users → All Users\n" +
-                "      2. Find the user associated with your API key\n" +
-                "      3. Change their Role to 'Administrator'\n" +
-                "      4. Or create a new API key linked to an Administrator user\n" +
-                "   See QUICK_FIX.md for step-by-step instructions\n"
-              : "   The API keys don't have proper permissions.\n" +
-                "   Please check:\n" +
-                "   1. Go to WordPress Admin → WooCommerce → Settings → Advanced → REST API\n" +
-                "   2. Find your API key and ensure it has 'Read' permissions\n" +
-                "   3. Verify the user associated with the key has Administrator role\n" +
-                "   4. See COMPREHENSIVE_API_FIX.md for detailed instructions\n")
+          `[ERROR] WooCommerce API error (${response.status}):`,
+          errorText.substring(0, 200) // Limit error message length
         );
+        console.error(
+          `[ERROR] Failed URL: ${url
+            .toString()
+            .replace(/consumer_secret=[^&]+/g, "consumer_secret=***")}`
+        );
+        console.error(`[ERROR] Endpoint: ${cleanEndpoint}`);
+        console.error(`[ERROR] Method: ${method}`);
+
+        // If 401, provide helpful error message
+        if (response.status === 401) {
+          const errorCode = errorData?.code || "";
+          const isCannotView = errorCode === "woocommerce_rest_cannot_view";
+
+          console.error(
+            "\n⚠️  API Authentication Error (401):\n" +
+              (isCannotView
+                ? "   ❌ USER ROLE ISSUE: The user linked to your API key doesn't have Administrator role.\n" +
+                  "   🔧 QUICK FIX:\n" +
+                  "      1. Go to WordPress Admin → Users → All Users\n" +
+                  "      2. Find the user associated with your API key\n" +
+                  "      3. Change their Role to 'Administrator'\n" +
+                  "      4. Or create a new API key linked to an Administrator user\n" +
+                  "   See QUICK_FIX.md for step-by-step instructions\n"
+                : "   The API keys don't have proper permissions.\n" +
+                  "   Please check:\n" +
+                  "   1. Go to WordPress Admin → WooCommerce → Settings → Advanced → REST API\n" +
+                  "      2. Find your API key and ensure it has 'Read' permissions\n" +
+                  "      3. Verify the user associated with the key has Administrator role\n" +
+                  "      4. See COMPREHENSIVE_API_FIX.md for detailed instructions\n")
+          );
+        }
+
+        // Return empty array/object instead of throwing to prevent app crashes
+        if (endpoint.includes("products")) {
+          return [];
+        }
+        if (endpoint.includes("categories")) {
+          return [];
+        }
+        return null;
       }
+
+      return await response.json();
+    } catch (error: any) {
+      // Retry on network errors
+      if (attempt < retries) {
+        const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000);
+        console.warn(
+          `[WARN] Network error. Retrying in ${backoffDelay}ms... (Attempt ${
+            attempt + 1
+          }/${retries + 1})`
+        );
+        await delay(backoffDelay);
+        continue;
+      }
+
+      console.error("WooCommerce API Error:", error);
+      console.error(`Failed URL: ${url.toString()}`);
 
       // Return empty array/object instead of throwing to prevent app crashes
       if (endpoint.includes("products")) {
@@ -234,21 +304,16 @@ export async function fetchWooCommerce(
       }
       return null;
     }
-
-    return await response.json();
-  } catch (error: any) {
-    console.error("WooCommerce API Error:", error);
-    console.error(`Failed URL: ${url.toString()}`);
-
-    // Return empty array/object instead of throwing to prevent app crashes
-    if (endpoint.includes("products")) {
-      return [];
-    }
-    if (endpoint.includes("categories")) {
-      return [];
-    }
-    return null;
   }
+
+  // Should never reach here, but TypeScript needs it
+  if (endpoint.includes("products")) {
+    return [];
+  }
+  if (endpoint.includes("categories")) {
+    return [];
+  }
+  return null;
 }
 
 export async function getProducts(
@@ -263,12 +328,25 @@ export async function getProducts(
     order?: "asc" | "desc";
   } = {}
 ): Promise<WooCommerceProduct[]> {
-  const defaultParams = {
+  const defaultParams: Record<string, any> = {
     per_page: 12,
     page: 1,
     status: "publish",
     ...params,
   };
+
+  // Ensure boolean values are properly converted to strings for WooCommerce API
+  if (defaultParams.featured !== undefined) {
+    defaultParams.featured = defaultParams.featured ? "true" : "false";
+  }
+  if (defaultParams.on_sale !== undefined) {
+    defaultParams.on_sale = defaultParams.on_sale ? "true" : "false";
+  }
+
+  console.log(
+    "[DEBUG] getProducts - Params:",
+    JSON.stringify(defaultParams, null, 2)
+  );
 
   return fetchWooCommerce("products", defaultParams);
 }

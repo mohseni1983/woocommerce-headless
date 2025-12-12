@@ -22,3 +22,4 @@ data:
   # Internal WordPress URL (for server-side only)
   WORDPRESS_INTERNAL_URL: "http://wordpress.wordpress.svc.cluster.local"
 
+

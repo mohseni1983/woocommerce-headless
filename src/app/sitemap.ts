@@ -1,6 +1,10 @@
 import { MetadataRoute } from "next";
 import { getProducts, getCategories } from "@/lib/woocommerce";
 
+// Disable static generation - sitemap will be generated on-demand
+export const dynamic = "force-dynamic";
+export const revalidate = 0; // No revalidation, always dynamic
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://30tel.com";
 
@@ -38,10 +42,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Dynamic product pages
+  // Dynamic product pages - Limit to prevent 508 errors
   let productPages: MetadataRoute.Sitemap = [];
   try {
-    const products = await getProducts({ per_page: 1000 });
+    // Limit to 100 products for sitemap to prevent resource limit errors
+    const products = await getProducts({ per_page: 100 });
     productPages = products.map((product) => ({
       url: `${baseUrl}/products/${product.id}`,
       lastModified: new Date(product.date_modified),
@@ -50,12 +55,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
   } catch (error) {
     console.error("Error fetching products for sitemap:", error);
+    // Continue with empty array if products fail
   }
 
-  // Dynamic category pages
+  // Dynamic category pages - Limit to prevent 508 errors
   let categoryPages: MetadataRoute.Sitemap = [];
   try {
-    const categories = await getCategories({ per_page: 100 });
+    // Limit to 50 categories for sitemap to prevent resource limit errors
+    const categories = await getCategories({ per_page: 50 });
     categoryPages = categories.map((category) => ({
       url: `${baseUrl}/categories/${category.slug}`,
       lastModified: new Date(),
@@ -64,9 +71,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
   } catch (error) {
     console.error("Error fetching categories for sitemap:", error);
+    // Continue with empty array if categories fail
   }
 
   return [...staticPages, ...productPages, ...categoryPages];
 }
-
-

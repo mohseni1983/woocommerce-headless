@@ -12,13 +12,16 @@ import AddToWishlistButton from "@/components/AddToWishlistButton";
 import AddToCartButton from "@/components/AddToCartButton";
 import { notFound } from "next/navigation";
 
+// Disable static generation - all pages will be generated on-demand
 export async function generateStaticParams() {
-  // Generate static params for popular products
-  const products = await getProducts({ per_page: 100 });
-  return products.map((product) => ({
-    id: product.id.toString(),
-  }));
+  return []; // Empty array = no static generation
 }
+
+// Enable dynamic rendering
+export const dynamicParams = true;
+
+// Force dynamic rendering - no SSG
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -68,14 +71,47 @@ export default async function ProductDetailPage({
   const product = await getProduct(id);
 
   if (!product) {
+    console.error("[ERROR] ProductDetailPage: Product not found for ID:", id);
     notFound();
   }
 
-  // Get related products
-  const relatedProducts = await getProducts({
-    category: product.categories[0]?.id,
-    per_page: 4,
-  });
+  // Validate product has required fields
+  if (
+    !product.images ||
+    !Array.isArray(product.images) ||
+    product.images.length === 0
+  ) {
+    console.warn(
+      "[WARN] ProductDetailPage: Product has no images, using placeholder"
+    );
+    // Add placeholder image if missing (with all required fields)
+    product.images = [
+      {
+        id: 0,
+        src: "/placeholder-product.svg",
+        name: product.name,
+        alt: product.name,
+      },
+    ];
+  }
+
+  // Get related products (with error handling)
+  let relatedProducts: any[] = [];
+  try {
+    if (
+      product.categories &&
+      product.categories.length > 0 &&
+      product.categories[0]?.id
+    ) {
+      relatedProducts = await getProducts({
+        category: product.categories[0].id,
+        per_page: 4,
+      });
+    }
+  } catch (error) {
+    console.error("[ERROR] Failed to fetch related products:", error);
+    // Continue with empty array
+  }
 
   const productStructuredData = generateProductStructuredData({
     name: product.name,
@@ -139,7 +175,7 @@ export default async function ProductDetailPage({
                   priority
                 />
               </div>
-              {product.images.length > 1 && (
+              {product.images && product.images.length > 1 && (
                 <div className="grid grid-cols-4 gap-4">
                   {product.images.slice(1, 5).map((image, index) => (
                     <div
@@ -147,8 +183,8 @@ export default async function ProductDetailPage({
                       className="relative aspect-square border-2 border-gray-200 rounded-lg overflow-hidden"
                     >
                       <Image
-                        src={image.src}
-                        alt={image.alt || product.name}
+                        src={image?.src || "/placeholder-product.svg"}
+                        alt={image?.alt || product.name}
                         fill
                         sizes="(max-width: 768px) 25vw, 12.5vw"
                         className="object-cover"
