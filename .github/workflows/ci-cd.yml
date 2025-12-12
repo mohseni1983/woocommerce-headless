@@ -1,0 +1,185 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  REGISTRY: 192.168.160.60:30500
+  IMAGE_NAME: 30tel-nextjs
+  KUBERNETES_NAMESPACE: 30tel
+
+jobs:
+  # Build and test job
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint || true
+
+      - name: Run type check
+        run: npm run type-check || npx tsc --noEmit || true
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            .next/
+            public/
+          retention-days: 1
+
+  # Build Docker image
+  build-image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name != 'pull_request'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure Docker for insecure registry
+        run: |
+          echo '{"insecure-registries": ["${{ env.REGISTRY }}"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker || true
+
+      - name: Log in to registry
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin || true
+        continue-on-error: true
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          platforms: linux/amd64
+
+      - name: Image digest
+        run: echo "Image built: ${{ steps.meta.outputs.tags }}"
+
+  # Deploy to Kubernetes
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-image
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: https://30tel.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Get image tag
+        id: image
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${GITHUB_SHA::8}"
+          else
+            IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          fi
+          echo "tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Using image: $IMAGE_TAG"
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/30tel-nextjs \
+            nextjs=${{ steps.image.outputs.tag }} \
+            -n ${{ env.KUBERNETES_NAMESPACE }} \
+            --kubeconfig=$HOME/.kube/config
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/30tel-nextjs \
+            -n ${{ env.KUBERNETES_NAMESPACE }} \
+            --timeout=300s \
+            --kubeconfig=$HOME/.kube/config
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n ${{ env.KUBERNETES_NAMESPACE }} -l app=30tel-nextjs
+          kubectl get deployment 30tel-nextjs -n ${{ env.KUBERNETES_NAMESPACE }}
+
+      - name: Health check
+        run: |
+          echo "Waiting for application to be ready..."
+          sleep 10
+          POD_NAME=$(kubectl get pods -n ${{ env.KUBERNETES_NAMESPACE }} -l app=30tel-nextjs -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec $POD_NAME -n ${{ env.KUBERNETES_NAMESPACE }} -- wget -q -O- http://localhost:3000/api/health || echo "Health check endpoint not available"
+

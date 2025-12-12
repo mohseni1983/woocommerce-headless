@@ -68,3 +68,4 @@ kubectl rollout status deployment/30tel-nextjs -n 30tel
 Or use the deployment file with the new tag.
 
 
+

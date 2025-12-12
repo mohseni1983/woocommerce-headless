@@ -130,3 +130,4 @@ kubectl logs -f deployment/30tel-nextjs -n 30tel
 - ⏳ Waiting for image push to complete deployment
 
 
+

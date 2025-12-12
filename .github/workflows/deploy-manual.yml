@@ -1,0 +1,64 @@
+name: Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: true
+        default: 'latest'
+      namespace:
+        description: 'Kubernetes namespace'
+        required: true
+        default: '30tel'
+      deployment_name:
+        description: 'Deployment name'
+        required: true
+        default: '30tel-nextjs'
+
+env:
+  REGISTRY: 192.168.160.60:30500
+  IMAGE_NAME: 30tel-nextjs
+
+jobs:
+  deploy:
+    name: Manual Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+          echo "Deploying image: $IMAGE_TAG"
+          
+          kubectl set image deployment/${{ github.event.inputs.deployment_name }} \
+            nextjs=$IMAGE_TAG \
+            -n ${{ github.event.inputs.namespace }} \
+            --kubeconfig=$HOME/.kube/config
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/${{ github.event.inputs.deployment_name }} \
+            -n ${{ github.event.inputs.namespace }} \
+            --timeout=300s \
+            --kubeconfig=$HOME/.kube/config
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n ${{ github.event.inputs.namespace }} -l app=${{ github.event.inputs.deployment_name }}
+          kubectl get deployment ${{ github.event.inputs.deployment_name }} -n ${{ github.event.inputs.namespace }}
+
