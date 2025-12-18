@@ -120,3 +120,4 @@ export const dynamic = "force-dynamic";
 1. لاگ‌های کامل build را بررسی کنید
 2. تعداد درخواست‌ها را در زمان build بشمارید
 3. با هاستینگ WordPress تماس بگیرید تا resource limit را افزایش دهند
+

@@ -1,6 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Instagram, Twitter, Facebook, Mail, Phone, MapPin } from "lucide-react";
+import {
+  Instagram,
+  Twitter,
+  Facebook,
+  Mail,
+  Phone,
+  MapPin,
+} from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -31,16 +38,31 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About Section */}
           <div>
-            <Link href="/" className="inline-block mb-4">
-              <Image
-                src="/logo.png"
-                alt="30tel Logo"
-                width={100}
-                height={40}
-                className="h-10 w-auto object-contain brightness-0 invert"
-                style={{ maxHeight: "40px" }}
-              />
-            </Link>
+            <div className="flex items-center space-x-4 space-x-reverse mb-4">
+              {/* Enamad Trust Seal */}
+              <div className="flex items-center">
+                <a
+                  referrerPolicy="origin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://trustseal.enamad.ir/?id=688452&Code=wnpAObdixMmEcZkvXIgjFzfRwDwueEtw"
+                  className="inline-block"
+                >
+                  <Image
+                    src="/enamad.png"
+                    alt="نماد اعتماد الکترونیکی"
+                    width={120}
+                    height={120}
+                    className="cursor-pointer "
+                    style={{
+                      maxHeight: "100px",
+                      width: "auto",
+                      height: "auto",
+                    }}
+                  />
+                </a>
+              </div>
+            </div>
             <p className="text-gray-400 mb-4 leading-relaxed">
               فروشگاه آنلاین موبایل و گجت با بهترین قیمت و کیفیت. ما بهترین
               محصولات را با گارانتی معتبر به شما ارائه می‌دهیم.
@@ -116,7 +138,8 @@ export default function Footer() {
               <li className="flex items-start space-x-2 space-x-reverse">
                 <MapPin size={18} className="text-blue-500 mt-1" />
                 <span className="text-gray-400">
-                خراسان رضوی <br /> شهر بردسکن- خیابان امام خمینی <br /> روبروی امام هشت <br /> موبایل سی تل
+                  خراسان رضوی <br /> شهر بردسکن- خیابان امام خمینی <br /> روبروی
+                  امام هشت <br /> موبایل سی تل
                 </span>
               </li>
             </ul>
@@ -146,5 +169,3 @@ export default function Footer() {
     </footer>
   );
 }
-
-

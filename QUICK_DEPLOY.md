@@ -108,3 +108,4 @@ pm2 restart 30tel --update-env --max-memory-restart 1G
 4. ✅ لاگ‌ها را به صورت منظم بررسی کنید
 
 برای راهنمای کامل، فایل `NODEJS_DEPLOY.md` را مطالعه کنید.
+

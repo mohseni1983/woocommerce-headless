@@ -408,3 +408,4 @@ sudo systemctl restart 30tel
 4. Backup منظم از دیتابیس و فایل‌ها بگیرید
 5. از PM2 یا systemd برای مدیریت process استفاده کنید
 6. برای production حتماً از HTTPS استفاده کنید
+

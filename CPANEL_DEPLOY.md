@@ -273,3 +273,4 @@ npm run build
 ```
 
 **نکته**: بعد از آپلود، حتماً `npm install` و `npm run build` را روی سرور اجرا کنید!
+

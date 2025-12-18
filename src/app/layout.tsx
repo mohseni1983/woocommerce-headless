@@ -64,6 +64,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${vazirmatn.variable} ${lalezar.variable} font-sans antialiased`}
+        suppressHydrationWarning
       >
         <script
           type="application/ld+json"

@@ -54,3 +54,4 @@ if command -v pm2 &> /dev/null; then
     echo -e "\n${GREEN}📊 Application status:${NC}"
     pm2 status
 fi
+

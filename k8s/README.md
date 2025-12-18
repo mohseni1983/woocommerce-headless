@@ -115,3 +115,5 @@ kubectl logs -f deployment/30tel-nextjs -n 30tel
 See `DEPLOYMENT.md` in the root directory for detailed troubleshooting steps.
 
 
+
+

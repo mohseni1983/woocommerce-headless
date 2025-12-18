@@ -23,3 +23,5 @@ data:
   WORDPRESS_INTERNAL_URL: "http://wordpress.wordpress.svc.cluster.local"
 
 
+
+
